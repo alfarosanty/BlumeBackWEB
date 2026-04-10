@@ -5,7 +5,7 @@ from app.database import engine, Base
 # Sin estos imports, 'Base.metadata.create_all' no encontrará nada para crear.
 # Asegurate de que los nombres coincidan con tus archivos en la carpeta 'models'
 from app.models import Articulo, Usuario, Cliente, Presupuesto, CondicionFiscal, Familia, SubFamilia, Medida, Color, ArticuloPrecio, ArticuloPresupuesto, EstadoPresupuesto 
-
+from app.controllers.ArticuloController import router as articulos_router
 # Esta línea busca las tablas en Intermedia. 
 # Si NO existen, las crea. Si YA existen, las deja intactas (no borra nada).
 Base.metadata.create_all(bind=engine)
@@ -15,6 +15,8 @@ app = FastAPI(
     description="Backend para gestión de inventario y facturación textil",
     version="1.0.0"
 )
+
+app.include_router(articulos_router)
 
 @app.get("/")
 def inicio():

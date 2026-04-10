@@ -1,16 +1,17 @@
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from typing import Optional, Annotated
-from app.schemas.pagination import PagedResponse, PaginationParams # <--- Clase nueva
+from app.schemas.pagination import PagedResponse, PaginationParams
 from app.services.IArticuloService import IArticuloService
 from app.services.imp.ArticuloService import get_articulo_service
-from app.models import Articulo, ArticuloPrecio
+from app.schemas import ArticuloSchema, ArticuloPrecioSchema
 
 router = APIRouter(prefix="/articulos", tags=["Articulos"])
 
 # Alias para la inyección del servicio (reutilizable en todo el archivo)
 ArticuloServiceDep = Annotated[IArticuloService, Depends(get_articulo_service)]
 
-@router.get("/", response_model=PagedResponse[Articulo])
+
+@router.get("/", response_model=PagedResponse[ArticuloSchema])
 def get_paginado(
     service: ArticuloServiceDep,
     pagination: Annotated[PaginationParams, Depends()], 
@@ -29,7 +30,7 @@ def get_paginado(
         id_articulo_precio=articulo_precio_id
     )
 
-@router.get("/", response_model=PagedResponse[ArticuloPrecio])
+@router.get("/precios", response_model=PagedResponse[ArticuloPrecioSchema])
 def get_precio_paginado(
     service: ArticuloServiceDep,
     pagination: Annotated[PaginationParams, Depends()], 

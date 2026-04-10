@@ -1,7 +1,7 @@
 from typing import Any, Iterable, Mapping, Optional
 from sqlalchemy.orm import Session, joinedload
 from app.models import ArticuloPrecio, Articulo
-from IArticuloRepository import IArticuloRepository
+from app.repositories.IArticuloRepository import IArticuloRepository
 from app.schemas.pagination import PagedResponse
 
 class ArticuloRepository(IArticuloRepository):
