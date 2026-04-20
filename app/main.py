@@ -1,6 +1,9 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-
+import os
+from dotenv import load_dotenv
+import cloudinary
 # --- PASO CRUCIAL: IMPORTAR TUS MODELOS ---
 # Sin estos imports, 'Base.metadata.create_all' no encontrará nada para crear.
 # Asegurate de que los nombres coincidan con tus archivos en la carpeta 'models'
@@ -10,10 +13,34 @@ from app.controllers.ArticuloController import router as articulos_router
 # Si NO existen, las crea. Si YA existen, las deja intactas (no borra nada).
 Base.metadata.create_all(bind=engine)
 
+load_dotenv()
+
+cloudinary.config(
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key = os.getenv("CLOUDINARY_API_KEY"),
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+)
+
 app = FastAPI(
     title="Blume API",
     description="Backend para gestión de inventario y facturación textil",
     version="1.0.0"
+)
+
+# Configurá los orígenes permitidos
+origins = [
+    "http://localhost:5173",  # Agregado el puerto de Vite/React
+    "http://127.0.0.1:5173",
+    # Si vas a publicar tu web, acá agregarías tu dominio real
+    # "https://www.blumeweb.com", 
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,          # Lista de orígenes permitidos
+    allow_credentials=True,         # Permitir cookies/sesiones
+    allow_methods=["*"],            # Permitir todos los métodos (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],            # Permitir todos los headers
 )
 
 app.include_router(articulos_router)

@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from decouple import config
+import logging
 
 # Leemos los datos de tu .env
 DB_USER = config("DB_USER")
@@ -18,7 +19,10 @@ DB_PASS_SAFE = urllib.parse.quote_plus(str(DB_PASS))
 SQLALCHEMY_DATABASE_URL = f"mysql+mysqlconnector://{DB_USER}:{DB_PASS_SAFE}@{DB_HOST}/{DB_NAME}"
 # ----------------------------
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False)
+
+
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

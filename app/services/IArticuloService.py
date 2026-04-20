@@ -1,29 +1,30 @@
 from abc import ABC, abstractmethod
-from typing import Optional
-from app.models import Articulo, ArticuloPrecio
-from app.schemas.pagination import PagedResponse
+from typing import Any, Dict, Optional
+
+from fastapi import UploadFile
+from app.schemas import PagedResponse, ArticuloPrecioSchema, ArticuloSchema
 
 
 class IArticuloService(ABC):
     @abstractmethod
     def get_paginado(
         self,
-        skip: int, 
-        limit: int,
+        skip: Optional[int], 
+        limit: Optional[int],
         filtro_codigo: Optional[str] = None,
         id_subfamilia: Optional[int] = None,
         id_articulo_precio: Optional[int] = None
-    ) -> PagedResponse[Articulo] :
+    ) -> PagedResponse[ArticuloSchema] :
         """Trae los artículos envueltos en la lógica de paginación"""
         pass
 
     @abstractmethod
     def get_precio_paginado(
         self,
-        skip: int, 
-        limit: int,
+        skip: Optional[int], 
+        limit: Optional[int],
         filtro_codigo: Optional[str] = None,
-    ) -> PagedResponse[ArticuloPrecio] :
+    ) -> PagedResponse[ArticuloPrecioSchema] :
         """Trae los artículos precios envueltos en la lógica de paginación"""
         pass
 
@@ -41,4 +42,8 @@ class IArticuloService(ABC):
         Procesa un archivo Excel para actualizar los datos de los artículos.
         Retorna un diccionario con el resultado del proceso.
         """
+        pass
+
+    @abstractmethod
+    async def subir_foto(self, articulo_precio_id: int, file: UploadFile) -> Dict[str, Any]:
         pass

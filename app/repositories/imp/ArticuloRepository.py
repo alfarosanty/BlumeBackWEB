@@ -1,8 +1,12 @@
 from typing import Any, Iterable, Mapping, Optional
-from sqlalchemy.orm import Session, joinedload
-from app.models import ArticuloPrecio, Articulo
+from urllib.parse import unquote
+from fastapi import Query
+from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.orm import Session, joinedload, selectinload
+from app.models import ArticuloPrecio, Articulo, SubFamilia
 from app.repositories.IArticuloRepository import IArticuloRepository
-from app.schemas.pagination import PagedResponse
+from app.schemas import ArticuloPrecioSchema, ArticuloSchema, PagedResponse
+import time
 
 class ArticuloRepository(IArticuloRepository):
 
@@ -14,95 +18,169 @@ class ArticuloRepository(IArticuloRepository):
 
     def get_paginado(
         self, 
-        skip: int, 
-        limit: int, 
+        skip: Optional[int], 
+        limit: Optional[int], 
         filtro_codigo: Optional[str] = None,
         id_subfamilia: Optional[int] = None,
         id_articulo_precio: Optional[int] = None
-    ) -> PagedResponse[Articulo]:
+    ) -> PagedResponse[ArticuloSchema]:
         
-        # 1. Armamos la query base con Eager Loading (Include en .NET)
+        start_time = time.time()
+        codigo_limpio = unquote(filtro_codigo) if filtro_codigo else None
+        
         query = self.db.query(Articulo).options(
-            joinedload(Articulo.subfamilia),
+            joinedload(Articulo.color),
+            joinedload(Articulo.medida),
+            joinedload(Articulo.subfamilia).joinedload(SubFamilia.familia),
             joinedload(Articulo.articulo_precio)
         )
 
-        # 2. Aplicamos filtros
         if id_subfamilia:
             query = query.filter(Articulo.id_subfamilia == id_subfamilia)
-        
         if id_articulo_precio:
             query = query.filter(Articulo.id_articulo_precio == id_articulo_precio)
-            
-        if filtro_codigo:
-            query = query.filter(Articulo.codigo == filtro_codigo)
+        if codigo_limpio:
+            query = query.filter(Articulo.codigo == codigo_limpio)
 
-        # 3. Ejecutamos la lógica de base de datos
-        total = query.count()
-        items = query.offset(skip).limit(limit).all()
+        fetch_start = time.time()
+        db_items = query.offset(skip).limit(limit).all()
+        print(f"⏱️ DB Fetch: {time.time() - fetch_start:.4f}s")
 
-        # 4. Usamos TU CLASE para devolver el objeto completo
-        # Esto calcula la página actual y las totales automáticamente
-        return PagedResponse[Articulo].crear(
-            items=items,
-            total=total,
-            skip=skip,
-            limit=limit
-        )
-    
+        map_start = time.time()
+        items_schema = [ArticuloSchema.model_validate(item) for item in db_items]
+        print(f"⏱️ Mapping: {time.time() - map_start:.4f}s")
+
+        total_estimado = (skip or 0) + len(db_items)
+
+        print(f"🚀 TOTAL API: {time.time() - start_time:.4f}s")
+        
+        return PagedResponse[ArticuloSchema].crear(
+            items=items_schema, 
+            total=total_estimado, 
+            skip=skip or 0, 
+            limit=limit or 1
+        )    
     def get_precio_paginado(
         self, 
-        skip: int, 
-        limit: int, 
+        skip: Optional[int], 
+        limit: Optional[int], 
         filtro_codigo: Optional[str] = None,
-    ) -> PagedResponse[ArticuloPrecio]:
-        
-        # 1. Armamos la query base con Eager Loading (Include en .NET)
+    ) -> PagedResponse[ArticuloPrecioSchema]:
+
+        codigo_limpio = unquote(filtro_codigo) if filtro_codigo else None
+ 
         query = self.db.query(ArticuloPrecio)
 
-        # 2. Aplicamos filtros           
-        if filtro_codigo:
-            query = query.filter(ArticuloPrecio.codigo == filtro_codigo)
+        if codigo_limpio:
+            query = query.filter(ArticuloPrecio.codigo == codigo_limpio)
 
-        # 3. Ejecutamos la lógica de base de datos
         total = query.count()
-        items = query.offset(skip).limit(limit).all()
 
-        # 4. Usamos TU CLASE para devolver el objeto completo
-        # Esto calcula la página actual y las totales automáticamente
-        return PagedResponse[ArticuloPrecio].crear(
-            items=items,
+        if skip is not None and limit is not None:
+                query = query.offset(skip).limit(limit)
+
+        db_items = query.all()
+
+        items_schema = [ArticuloPrecioSchema.model_validate(item) for item in db_items]   
+
+        return PagedResponse[ArticuloPrecioSchema].crear(
+            items=items_schema,
             total=total,
-            skip=skip,
-            limit=limit
+            skip=skip or 0,
+            limit=limit or total
         )
 
     def sync_precios(self, mappings: Iterable[Mapping[str, Any]]) -> int:
         try:
-            for data in mappings:
-                # Al ser Mapping[str, Any], el ** ya no tira error
-                nuevo_precio = ArticuloPrecio(**data) 
-                self.db.merge(nuevo_precio)
+            precios_list = list(mappings)
+            if not precios_list:
+                return 0
+                
+            stmt = insert(ArticuloPrecio).values(precios_list)
             
+            do_update_stmt = stmt.on_duplicate_key_update(
+                codigo=stmt.inserted.codigo,
+                descripcion=stmt.inserted.descripcion,
+                precio1=stmt.inserted.precio1,
+                precio2=stmt.inserted.precio2,
+                precio3=stmt.inserted.precio3
+            )
+            
+            self.db.execute(do_update_stmt)
             self.db.commit()
-            # Para contar elementos de un Iterable de forma segura:
-            return sum(1 for _ in mappings)
+            
+            return len(precios_list)
+            
         except Exception as e:
             self.db.rollback()
+            raise e
+            
+    def sync_articulos(self, mappings: Iterable[Mapping[str, Any]]) -> int:
+        articulos_list = list(mappings)
+        if not articulos_list:
+            print("\n[SYNC] ⚠️ No llegaron artículos para procesar.")
+            return 0
+            
+        print(f"\n[SYNC] 🚀 Iniciando sincronización de {len(articulos_list)} artículos...")
+        
+        batch_size = 500
+        total_insertados = 0
+        
+        try:
+            for i in range(0, len(articulos_list), batch_size):
+                batch = articulos_list[i:i + batch_size]
+                
+                # --- DEBUG DE DATOS ---
+                print(f"\n--- Analizando Lote {i//batch_size + 1} ---")
+                for idx, item in enumerate(batch[:3]): # Miramos los primeros 3 de cada lote
+                    print(f"Item {idx} de muestra: Cod={item.get('codigo')}, Color={item.get('id_color')}, Medida={item.get('id_medida')}, ID={item.get('id')}")
+
+                # 1. Armamos el insert
+                stmt = insert(Articulo).values(batch)
+                
+                # 2. Definimos el Upsert
+                do_update_stmt = stmt.on_duplicate_key_update(
+                    codigo=stmt.inserted.codigo,
+                    descripcion=stmt.inserted.descripcion,
+                    id_color=stmt.inserted.id_color,
+                    id_medida=stmt.inserted.id_medida,
+                    id_subfamilia=stmt.inserted.id_subfamilia,
+                    id_articulo_precio=stmt.inserted.id_articulo_precio,
+                    habilitado=stmt.inserted.habilitado
+                )
+                
+                # 3. Ejecutamos y miramos qué dice MySQL
+                result = self.db.execute(do_update_stmt)
+                
+                # rowcount en MySQL: 1 si insertó, 2 si actualizó (pisó)
+                print(f"RESULTADO: Filas afectadas en este lote: {result.rowcount}") # type: ignore
+                if result.rowcount > len(batch): # type: ignore
+                    print(f"⚠️ AVISO: Hay {result.rowcount - len(batch)} actualizaciones. Estás PISANDO datos existentes.") # type: ignore
+                
+                total_insertados += len(batch)
+
+            self.db.commit()
+            print(f"\n[SYNC] ✅ Finalizado. Total procesado: {total_insertados} registros.\n")
+            return total_insertados
+            
+        except Exception as e:
+            self.db.rollback()
+            print(f"\n[ERROR CRÍTICO] ❌ Falló la sincronización:")
+            print(f"Tipo de error: {type(e).__name__}")
+            print(f"Mensaje: {str(e)}")
+            # Si el error es de MySQL, suele traer el detalle de la clave que falló
             raise e
         
-    def sync_articulos(self, mappings: Iterable[Mapping[str, Any]]) -> int:
-        try:
-            contador = 0
-            for data in mappings:
-                # Sincronizamos el objeto
-                nuevo_articulo = Articulo(**data) 
-                self.db.merge(nuevo_articulo)
-                contador += 1
-            
+    def actualizar_url_foto(self, articulo_precio_id: int, url: str) -> None:
+        # Buscamos el registro
+        articulo = self.db.query(ArticuloPrecio).filter(
+            ArticuloPrecio.id == articulo_precio_id
+        ).first()
+        
+        if articulo:
+            articulo.url_foto = url # type: ignore
             self.db.commit()
-            return contador
-            
-        except Exception as e:
-            self.db.rollback()
-            raise e
+            self.db.refresh(articulo)
+        else:
+            # Manejo básico si no se encuentra el ID
+            raise ValueError(f"No se encontró el artículo con ID {articulo_precio_id}")

@@ -22,3 +22,4 @@ class Presupuesto(Base):
     # Relaciones
     # cliente = relationship("Cliente", back_populates="presupuestos")
     articulos = relationship("ArticuloPresupuesto", back_populates="presupuesto")
+    cliente = relationship("Cliente", back_populates="presupuestos")

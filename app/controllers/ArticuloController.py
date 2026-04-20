@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from typing import Optional, Annotated
-from app.schemas.pagination import PagedResponse, PaginationParams
 from app.services.IArticuloService import IArticuloService
 from app.services.imp.ArticuloService import get_articulo_service
-from app.schemas import ArticuloSchema, ArticuloPrecioSchema
+from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema
 
 router = APIRouter(prefix="/articulos", tags=["Articulos"])
 
@@ -11,7 +10,7 @@ router = APIRouter(prefix="/articulos", tags=["Articulos"])
 ArticuloServiceDep = Annotated[IArticuloService, Depends(get_articulo_service)]
 
 
-@router.get("/", response_model=PagedResponse[ArticuloSchema])
+@router.get("", response_model=PagedResponse[ArticuloSchema])
 def get_paginado(
     service: ArticuloServiceDep,
     pagination: Annotated[PaginationParams, Depends()], 
@@ -36,9 +35,7 @@ def get_precio_paginado(
     pagination: Annotated[PaginationParams, Depends()], 
     codigo: Optional[str] = Query(None),
 ):
-    """
-    Obtener artículos precios de forma paginada.
-    """
+    # Aquí pasamos los valores tal cual, podrían ser None
     return service.get_precio_paginado(
         skip=pagination.skip, 
         limit=pagination.size, 
@@ -59,3 +56,17 @@ def importar_articulos(
     file: UploadFile = File(...)
 ):
     return service.procesar_excel_articulos(file)
+
+@router.post("/{articulo_precio_id}/foto")
+async def subir_foto_articulo(
+    articulo_precio_id: int,
+    service: ArticuloServiceDep,
+    file: UploadFile = File(...)
+):
+    """
+    Sube una foto a Cloudinary y asocia la URL al artículo en la base de datos.
+    """
+    if file.content_type is None or not file.content_type.startswith("image/"):
+            return {"error": "El archivo no es una imagen válida"}
+    
+    return await service.subir_foto(articulo_precio_id, file)

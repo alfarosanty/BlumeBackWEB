@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Generic, TypeVar, Type
+from typing import List, Generic, Optional, TypeVar, Type
 
 # Definimos un tipo genérico T (como en C#)
 T = TypeVar("T")
@@ -24,9 +24,12 @@ class PagedResponse(BaseModel, Generic[T]):
     
 
 class PaginationParams(BaseModel):
-    pagina: int = Field(1, ge=1, description="Número de página")
-    size: int = Field(10, ge=1, le=100, description="Registros por página")
+    # Al ponerle None, FastAPI entiende que son opcionales
+    pagina: Optional[int] = Field(None, ge=1, description="Número de página")
+    size: Optional[int] = Field(None, ge=1, le=100, description="Registros por página")
 
     @property
-    def skip(self) -> int:
+    def skip(self) -> Optional[int]:
+        if self.pagina is None or self.size is None:
+            return None
         return (self.pagina - 1) * self.size
