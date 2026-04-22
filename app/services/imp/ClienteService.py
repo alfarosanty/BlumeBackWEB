@@ -25,8 +25,14 @@ class ClienteService(IClienteService):
             id=id
         )
     
-    def crear(self, cliente: Cliente) -> Cliente:
-        return self.clienteRepository.crear(cliente)
+    def crear(self, razon_social: str, cuit: str, telefono: str):
+        nuevo_cliente = Cliente(
+            razon_social=razon_social,
+            cuit=cuit,
+            telefono=telefono,
+            id_cliente_local=None,
+        )
+        return self.clienteRepository.crear(nuevo_cliente)
     
     def actualizar(self, cliente: Cliente) -> Cliente:
         return self.clienteRepository.actualizar(cliente)

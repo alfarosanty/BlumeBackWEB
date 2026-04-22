@@ -21,17 +21,17 @@ def get_paginado(
     Obtener clientes de forma paginada.
     """
     return service.get_paginado(
-        skip=pagination.skip, 
-        limit=pagination.size, 
+        skip=pagination.skip,  # type: ignore
+        limit=pagination.size, # type: ignore
         id=id
     )
 
-@router.post("/", response_model=Cliente)
-def crear(
-    service: ClienteServiceDep,
-    cliente: Cliente # Recibís un diccionario genérico en vez de un modelo
-):
-    return service.crear(cliente)
+#@router.post("/", response_model=Cliente)
+#def crear(
+#    service: ClienteServiceDep,
+#    cliente: Cliente # Recibís un diccionario genérico en vez de un modelo
+#):
+#    return service.crear(cliente.razon_social, cliente.cuit, cliente.telefono)
 
 @router.put("/{cliente_id}", response_model=Cliente)
 def actualizar(

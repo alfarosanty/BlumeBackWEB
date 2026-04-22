@@ -20,7 +20,7 @@ class IClienteService(ABC):
         pass
 
     @abstractmethod
-    def crear(self, cliente: Cliente) -> Cliente:
+    def crear(self, razon_social: str, cuit: str, telefono: str) -> Cliente:
         """Crea un nuevo cliente en la base de datos."""
         pass
 

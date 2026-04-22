@@ -24,8 +24,8 @@ def get_paginado(
     Obtener artículos de forma paginada.
     """
     return service.get_paginado(
-        skip=pagination.skip, 
-        limit=pagination.size, 
+        skip=pagination.skip,  # type: ignore
+        limit=pagination.size, # type: ignore
         cliente_id=cliente_id,
         estado=estado,
         desde=desde,
