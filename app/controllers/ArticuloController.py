@@ -4,6 +4,8 @@ from app.services.IArticuloService import IArticuloService
 from app.services.imp.ArticuloService import get_articulo_service
 from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema
 
+from app.core.security import obtener_usuario_actual, verificar_rol
+
 router = APIRouter(prefix="/articulos", tags=["Articulos"])
 
 # Alias para la inyección del servicio (reutilizable en todo el archivo)
@@ -46,14 +48,16 @@ def get_precio_paginado(
 @router.post("/importar-precios")
 def importar_precios(
     service: ArticuloServiceDep,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    usuario: dict = Depends(verificar_rol(["super_admin", "staff"]))
 ):
     return service.procesar_upsert_precios(file)
 
 @router.post("/importar-articulos")
 def importar_articulos(
     service: ArticuloServiceDep,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    usuario: dict = Depends(verificar_rol(["super_admin", "staff"]))
 ):
     return service.procesar_excel_articulos(file)
 
@@ -61,7 +65,8 @@ def importar_articulos(
 async def subir_foto_articulo(
     articulo_precio_id: int,
     service: ArticuloServiceDep,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    usuario: dict = Depends(verificar_rol(["super_admin", "staff"]))
 ):
     """
     Sube una foto a Cloudinary y asocia la URL al artículo en la base de datos.

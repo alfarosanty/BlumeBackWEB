@@ -10,6 +10,7 @@ class Usuario(Base):
     id = Column(Integer, primary_key=True, index=True)
     # El email es lo que usaremos para el login
     email = Column(String(100), unique=True, index=True, nullable=False)
+    username = Column(String(50), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     
     # Metadata útil
@@ -18,7 +19,8 @@ class Usuario(Base):
     
     # LA LLAVE CLAVE: 
     # Mantenemos tu lógica de Multi-tenant
-    confirmado = Column(Boolean, default=False)
+    confirmado = Column(Boolean, nullable=False, default=False)
+    rol = Column(String(20), default="client")
     id_cliente = Column(Integer, ForeignKey("clientes.id"))
     
     # Relación

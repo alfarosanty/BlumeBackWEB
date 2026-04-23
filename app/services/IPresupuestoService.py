@@ -3,6 +3,7 @@ from datetime import date
 from typing import Optional
 
 from app.models import Presupuesto
+from app.schemas.PresupuestoSchema import PresupuestoFiltros
 from app.schemas.pagination import PagedResponse
 
 
@@ -34,4 +35,9 @@ class IPresupuestoService(ABC):
     @abstractmethod
     def actualizar(self, presupuesto: Presupuesto) -> Presupuesto:
         """Actualiza un presupuesto existente por su ID."""
+        pass
+
+    @abstractmethod
+    def obtener_presupuestos_filtrados(self, filtros: PresupuestoFiltros, auth: dict) -> PagedResponse[Presupuesto]:
+        """Obtiene los presupuestos filtrados"""
         pass

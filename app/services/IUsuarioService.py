@@ -15,3 +15,8 @@ class IUsuarioService(ABC):
     def get_by_email(self, email: str) -> Usuario|None:
         """ Obtención de usuario a partir de su mail. """
         pass
+
+    @abstractmethod
+    def listar_usuarios_pendientes(self) -> list[Usuario]:
+        """ Función pasamano entre controller + repository"""
+        pass

@@ -5,6 +5,8 @@ import re
 
 class UsuarioBase(BaseModel):
     email: EmailStr
+    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$")
+    rol: str
     id_cliente: Optional[int] = None
     is_active: bool = True
 
@@ -25,6 +27,7 @@ class TokenData(BaseModel):
 
 class RegistroUsuarioEmpresa(BaseModel):
     email: EmailStr
+    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$")
     password: str = Field(..., min_length=8)
     
     razon_social: str = Field(..., min_length=3, max_length=150)
@@ -48,3 +51,15 @@ class RegistroUsuarioEmpresa(BaseModel):
         if len(v) != 11:
             raise ValueError('El CUIT debe tener exactamente 11 dígitos')
         return v
+    
+
+class EditarUsuarioRequest(BaseModel):
+    rol: Optional[str] = None
+    id_cliente_asociado: Optional[int] = None 
+    confirmado: Optional[bool] = None
+
+class UsuarioFiltros(BaseModel):
+    email: Optional[str] = None
+    username: Optional[str] = None
+    rol: Optional[str] = None
+    confirmado: Optional[bool] = None
