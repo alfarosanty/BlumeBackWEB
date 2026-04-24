@@ -11,6 +11,7 @@ from app.models import Articulo, Usuario, Cliente, Presupuesto, CondicionFiscal,
 from app.controllers.ArticuloController import router as articulos_router
 from app.controllers.UsuarioController import router as usuarios_router
 from app.controllers.AuthController import router as auth_router
+from app.controllers.PresupuestoController import router as presupuesto_router
 
 # Esta línea busca las tablas en Intermedia. 
 # Si NO existen, las crea. Si YA existen, las deja intactas (no borra nada).
@@ -49,6 +50,8 @@ app.add_middleware(
 app.include_router(articulos_router)
 app.include_router(usuarios_router)
 app.include_router(auth_router)
+app.include_router(presupuesto_router)
+
 
 @app.get("/")
 def inicio():

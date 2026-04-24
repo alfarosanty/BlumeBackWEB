@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.security import verificar_rol
 from app.database import get_db
+from app.models.Usuario import Usuario
 from app.schemas.UsuarioSchema import RegistroUsuarioEmpresa, UsuarioResponse, EditarUsuarioRequest, UsuarioFiltros
 from app.repositories.imp.UsuarioRepository import UsuarioRepository
 from app.repositories.imp.ClienteRepository import ClienteRepository
@@ -54,7 +55,7 @@ def obtener_usuario_por_email(
 @router.get("/pendientes", response_model=list[UsuarioResponse])
 def get_pendientes(
     service: UsuarioServiceDep, # <--- ¡Mágicamente ya tenés el servicio listo!
-    admin_auth: dict = Depends(verificar_rol(["super_admin"]))
+    admin_auth: Usuario = Depends(verificar_rol(["super_admin"]))
 ):
     # Ya no necesitás crear nada acá adentro. Directo al grano:
     return service.listar_usuarios_pendientes()
@@ -64,7 +65,7 @@ def configurar_usuario(
     usuario_id: int,
     datos: EditarUsuarioRequest,
     service: UsuarioServiceDep,
-    admin_auth: dict = Depends(verificar_rol(["super_admin"]))
+    admin_auth: Usuario = Depends(verificar_rol(["super_admin"]))
 ):
     try:
         # Esto te sirve tanto para aprobar como para solo cambiar un rol
@@ -76,7 +77,7 @@ def configurar_usuario(
 def get_usuarios_full(
     service: UsuarioServiceDep,
     filtros: UsuarioFiltros = Depends(),
-    admin_auth: dict = Depends(verificar_rol(["super_admin"]))
+    admin_auth: Usuario = Depends(verificar_rol(["super_admin"]))
 ):
     # Este endpoint es el motor de la tabla principal del admin
     return service.listar_todos(filtros)

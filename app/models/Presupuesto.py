@@ -8,15 +8,11 @@ class Presupuesto(Base):
     __tablename__ = "presupuestos"
 
     id = Column(Integer, primary_key=True, index=True)
-    fecha = Column(DateTime, nullable=True)
     fecha_creacion = Column(DateTime, default=datetime.now)
     
     id_cliente = Column(Integer, ForeignKey("clientes.id"))
     estado = Column(SQLEnum(EstadoPresupuesto), default=EstadoPresupuesto.CREADO)
-    id_factura = Column(Integer, nullable=True)
-    
-    eximir_iva = Column(Boolean, default=False)
-    descuento_general = Column(Float, default=0.0)
+
     total = Column(Float, default=0.0)
 
     # Relaciones

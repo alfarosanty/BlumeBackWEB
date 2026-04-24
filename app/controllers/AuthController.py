@@ -2,19 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.core.security import crear_token_acceso
+from app.core.security import crear_token_acceso, obtener_usuario_actual
+from app.models.Usuario import Usuario
 from app.services.imp.AuthService import AuthService
 from app.repositories.imp.UsuarioRepository import UsuarioRepository
-from app.schemas.UsuarioSchema import Token
+from app.schemas.UsuarioSchema import Token, UsuarioResponse
+
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    service = AuthService(UsuarioRepository(db))
+    authService = AuthService(UsuarioRepository(db))
     
-    # Intentamos autenticar
-    usuario = service.autenticar_usuario(form_data.username, form_data.password)
+    usuario = authService.autenticar_usuario(form_data.username, form_data.password)
     
     if not usuario:
         raise HTTPException(
@@ -28,9 +29,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             detail="Esta cuenta ha sido desactivada. Contacte al administrador."
         )
 
-
-    # Creamos el "Pase Libre" (Token) por 8 horas
-    # Metemos id_cliente para que Angular sepa de qué empresa es
     token_data = {
         "sub": usuario.email,
         "id_cliente": usuario.id_cliente,
@@ -42,5 +40,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     
     return {
         "access_token": access_token, 
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user": usuario
     }
+
+@router.get("/validar-token", response_model=UsuarioResponse)
+def verificar_token(
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
+):
+    """
+    Retorna los datos del usuario si el token en el header es válido.
+    """
+    return usuario_actual

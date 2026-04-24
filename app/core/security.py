@@ -1,15 +1,18 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Annotated
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models.Usuario import Usuario
+from app.repositories.imp.UsuarioRepository import UsuarioRepository
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuraciones desde el .env
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 480)) # 8 Horas
@@ -29,12 +32,13 @@ def crear_token_acceso(data: dict, expires_delta: Optional[timedelta] = None) ->
     
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire.timestamp()})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def obtener_usuario_actual(token: str = Depends(oauth2_scheme)):
-    """Valida el token y devuelve el contenido (payload)"""
+def obtener_usuario_actual(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_db)]
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Sesión expirada o inválida. Por favor, reingrese.",
@@ -49,23 +53,28 @@ def obtener_usuario_actual(token: str = Depends(oauth2_scheme)):
         
         if email is None:
             raise credentials_exception
-        return payload 
+            
+        repo = UsuarioRepository(db)
+        usuario = repo.get_by_email(email)
+        
+        if usuario is None:
+            raise credentials_exception
+            
+        return usuario
+        
     except JWTError:
         raise credentials_exception
-    
+
 def verificar_rol(roles_permitidos: list[str]):
     """
-    Dependencia para restringir el acceso según el rol del token.
     Uso: usuario = Depends(verificar_rol(["super_admin", "staff"]))
     """
-    def _rol_checker(payload: dict = Depends(obtener_usuario_actual)):
-        rol_usuario = payload.get("rol")
-        
-        if rol_usuario not in roles_permitidos:
+    def _rol_checker(usuario: Annotated[Usuario, Depends(obtener_usuario_actual)]):
+        if usuario.rol not in roles_permitidos:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Acceso denegado. Se requiere uno de estos roles: {', '.join(roles_permitidos)}"
             )
-        return payload
+        return usuario
         
     return _rol_checker
