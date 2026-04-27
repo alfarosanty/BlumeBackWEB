@@ -37,17 +37,33 @@ def crear_presupuesto(
 def actualizar_presupuesto(
     presupuesto_id: int,
     service: PresupuestoServiceDep,
-    presupuesto_in: PresupuestoUpdate, # <--- Cambiado a Schema
+    presupuesto_in: PresupuestoUpdate,
     auth: Usuario = Depends(obtener_usuario_actual)
 ):
-    # 1. Buscar si existe
     db_presupuesto = service.get_by_id(presupuesto_id)
     if not db_presupuesto:
         raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
     
-    # 2. Validar permisos (Usando .rol y .id_cliente si auth es el objeto de SQLAlchemy)
     if auth.id_cliente is not None:
         raise HTTPException(status_code=403, detail="No tenés permiso para editar este presupuesto")
 
-    # 3. Llamar al servicio pasando el ID y los datos nuevos
     return service.actualizar(presupuesto_id, presupuesto_in)
+
+@router.get("/{presupuesto_id}", response_model=PresupuestoResponse)
+def obtener_presupuesto(
+    presupuesto_id: int,
+    service: PresupuestoServiceDep,
+    auth: Usuario = Depends(obtener_usuario_actual)
+):
+    db_presupuesto = service.get_by_id(presupuesto_id)
+    
+    if not db_presupuesto:
+        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
+    
+    if auth.rol != "admin" and db_presupuesto.id_cliente != auth.id_cliente: # type: ignore
+        raise HTTPException(
+            status_code=403, 
+            detail="No tenés permiso para acceder a este presupuesto"
+        )
+    
+    return db_presupuesto

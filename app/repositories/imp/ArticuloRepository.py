@@ -42,17 +42,12 @@ class ArticuloRepository(IArticuloRepository):
         if codigo_limpio:
             query = query.filter(Articulo.codigo == codigo_limpio)
 
-        fetch_start = time.time()
         db_items = query.offset(skip).limit(limit).all()
-        print(f"⏱️ DB Fetch: {time.time() - fetch_start:.4f}s")
 
-        map_start = time.time()
         items_schema = [ArticuloSchema.model_validate(item) for item in db_items]
-        print(f"⏱️ Mapping: {time.time() - map_start:.4f}s")
 
         total_estimado = (skip or 0) + len(db_items)
 
-        print(f"🚀 TOTAL API: {time.time() - start_time:.4f}s")
         
         return PagedResponse[ArticuloSchema].crear(
             items=items_schema, 

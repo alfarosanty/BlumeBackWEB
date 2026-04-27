@@ -1,7 +1,7 @@
 
 from datetime import datetime
 from typing import Any
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from app.database import get_db
 from app.models import ArticuloPresupuesto, EstadoPresupuesto
 from app.models.Presupuesto import Presupuesto
@@ -10,6 +10,9 @@ from app.repositories.imp.PresupuestoRepository import PresupuestoRepository
 from app.schemas.PresupuestoSchema import PresupuestoCreate, PresupuestoFiltros, PresupuestoUpdate
 from app.repositories.IPresupuestoRepository import IPresupuestoRepository
 from app.services.IPresupuestoService import IPresupuestoService
+import time
+
+
 class PresupuestoService(IPresupuestoService):
     presupuestoRepository: IPresupuestoRepository
 
@@ -32,32 +35,57 @@ class PresupuestoService(IPresupuestoService):
         )
     
     def crear(self, presupuesto: PresupuestoCreate):
+        
+        # 1. Validaciones
+        if not presupuesto.id_cliente:
+            raise HTTPException(status_code=400, detail="Falta id_cliente")
+        if not presupuesto.articulos:
+            raise HTTPException(status_code=400, detail="Presupuesto vacío")
 
         db_presupuesto = Presupuesto(
             id_cliente=presupuesto.id_cliente,
             estado=EstadoPresupuesto.CREADO,
-            fecha=datetime.now(),
             fecha_creacion=datetime.now(),
             total=0
         )
 
         total_acumulado = 0
         
-        for item in presupuesto.articulos:
+        for i, item in enumerate(presupuesto.articulos):
+            faltantes = []
+            if not item.id_articulo: faltantes.append("id_articulo")
+            if not item.codigo: faltantes.append("codigo")
+            if not item.descripcion: faltantes.append("descripcion")
+            if not item.cantidad or item.cantidad <= 0: faltantes.append("cantidad (mayor a 0)")
+            if item.precio_unitario is None: faltantes.append("precio_unitario")
+
+            if faltantes:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Error en el artículo pos {i}: Faltan o son inválidos: {', '.join(faltantes)}"
+                )
+
             nuevo_articulo = ArticuloPresupuesto(
                 id_articulo=item.id_articulo,
                 cantidad=item.cantidad,
                 precio_unitario=item.precio_unitario,
                 descripcion=item.descripcion,
-                codigo=item.codigo
+                codigo=item.codigo,
+                fecha_creacion=datetime.now()
             )
             total_acumulado += (item.cantidad * item.precio_unitario)
-            
             db_presupuesto.articulos.append(nuevo_articulo)
 
-        db_presupuesto.total = total_acumulado # type: ignore
 
-        return self.presupuestoRepository.crear(db_presupuesto)
+        db_presupuesto.total = total_acumulado  # type: ignore
+
+        try:
+            resultado = self.presupuestoRepository.crear(db_presupuesto)
+            
+            return resultado
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     
     def get_by_id(self, presupuesto_id: int):
         return self.presupuestoRepository.get_by_id(presupuesto_id)
