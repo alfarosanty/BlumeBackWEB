@@ -1,11 +1,12 @@
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, List, Mapping, Optional
 from urllib.parse import unquote
 from fastapi import Query
+from sqlalchemy import text
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.orm import Session, joinedload, selectinload
-from app.models import ArticuloPrecio, Articulo, SubFamilia
+from app.models import ArticuloPrecio, Articulo, Familia, SubFamilia
 from app.repositories.IArticuloRepository import IArticuloRepository
-from app.schemas import ArticuloPrecioSchema, ArticuloSchema, PagedResponse
+from app.schemas import ArticuloPrecioSchema, ArticuloSchema, PagedResponse, ArticuloSugerencia
 import time
 
 class ArticuloRepository(IArticuloRepository):
@@ -31,7 +32,7 @@ class ArticuloRepository(IArticuloRepository):
         query = self.db.query(Articulo).options(
             joinedload(Articulo.color),
             joinedload(Articulo.medida),
-            joinedload(Articulo.subfamilia).joinedload(SubFamilia.familia),
+            joinedload(Articulo.subfamilia).joinedload(SubFamilia.familia).joinedload(Familia.sector),
             joinedload(Articulo.articulo_precio)
         )
 
@@ -179,3 +180,18 @@ class ArticuloRepository(IArticuloRepository):
         else:
             # Manejo básico si no se encuentra el ID
             raise ValueError(f"No se encontró el artículo con ID {articulo_precio_id}")
+        
+
+    def get_sugerencias(self, query_booleana: str) -> List[ArticuloSugerencia]:
+        sql = text("""
+            SELECT ap.id, ap.codigo, ap.descripcion, ap.url_foto, ap.precio1 as precio
+            FROM articulos_precio ap
+            WHERE MATCH(ap.codigo, ap.descripcion) AGAINST(:q IN BOOLEAN MODE)
+            ORDER BY MATCH(ap.codigo, ap.descripcion) AGAINST(:q IN BOOLEAN MODE) DESC
+            LIMIT 5
+        """)
+        
+        result = self.db.execute(sql, {"q": query_booleana})
+        
+        # El mapeo es una sola línea, sin objetos anidados
+        return [ArticuloSugerencia(**row._asdict()) for row in result]

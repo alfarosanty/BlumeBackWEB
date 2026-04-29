@@ -10,3 +10,4 @@ from .Articulo import Articulo
 from .Usuario import Usuario
 from .ArticuloPresupuesto import ArticuloPresupuesto
 from .Presupuesto import Presupuesto
+from .Sector import Sector

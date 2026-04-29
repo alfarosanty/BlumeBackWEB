@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import UploadFile
-from app.schemas import PagedResponse, ArticuloPrecioSchema, ArticuloSchema
+from app.schemas import PagedResponse, ArticuloPrecioSchema, ArticuloSchema, ArticuloSugerencia
 
 
 class IArticuloService(ABC):
@@ -46,4 +46,8 @@ class IArticuloService(ABC):
 
     @abstractmethod
     async def subir_foto(self, articulo_precio_id: int, file: UploadFile) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def get_sugerencias(self, query_usuario: str) -> List[ArticuloSugerencia]:
         pass

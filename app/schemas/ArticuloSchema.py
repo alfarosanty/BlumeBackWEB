@@ -24,3 +24,13 @@ class ArticuloSchema(BaseModel):
     articulo_precio: Optional[ArticuloPrecioSchema] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class ArticuloSugerencia(BaseModel):
+    id: int
+    codigo: str
+    descripcion: str
+    url_foto: Optional[str] = None
+    precio: Optional[float] = None
+
+    class Config:
+        from_attributes = True

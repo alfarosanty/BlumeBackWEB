@@ -46,6 +46,8 @@ class ArticuloPresupuestoResponse(BaseModel):
 
 class PresupuestoResponse(BaseModel):
     id: int
+    numero_presupuesto_cliente: int
+    numero_seguimiento: int|None = None
     fecha_creacion: datetime
     id_cliente: int
     estado: str

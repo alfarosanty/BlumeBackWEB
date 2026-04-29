@@ -4,12 +4,14 @@ from fastapi import UploadFile, Depends
 from app.database import get_db
 from app.repositories.IArticuloRepository import IArticuloRepository
 from app.repositories.imp.ArticuloRepository import ArticuloRepository
-from app.schemas import PagedResponse, ArticuloPrecioSchema, ArticuloSchema
+from app.schemas import PagedResponse, ArticuloPrecioSchema, ArticuloSchema, ArticuloSugerencia
 from app.services.IArticuloService import IArticuloService
 from pandas import DataFrame
 from io import BytesIO
 import cloudinary.uploader
 from starlette.concurrency import run_in_threadpool
+from nltk.stem import SnowballStemmer
+import re
 
 FOLDER_ARTICULOS = "alfa_soluciones/articulos"
 
@@ -19,6 +21,7 @@ class ArticuloService(IArticuloService):
     
     def __init__(self, articuloRepository: IArticuloRepository) -> None:
         self.articuloRepository = articuloRepository
+        self.stemmer = SnowballStemmer('spanish')
 
 
     def get_paginado(
@@ -152,6 +155,24 @@ class ArticuloService(IArticuloService):
         except Exception as e:
             print(f"Error subiendo a Cloudinary: {e}")
             raise Exception("No se pudo procesar la imagen")
+        
+
+
+    def get_sugerencias(self, query_usuario: str) -> List[ArticuloSugerencia]:
+        query_limpia = re.sub(r'[^\w\s]', '', query_usuario.lower())
+        palabras = query_limpia.split()
+        
+        if not palabras: return []
+        
+        terminos = []
+        for p in palabras:
+            raiz = self.stemmer.stem(p)
+            # Mandamos la palabra con asterisco (como gallo*) 
+            # Y la raíz sola para que MySQL decida qué tanto se parecen.
+            terminos.append(f"{p}* {raiz}*")
+        
+        query_booleana = " ".join(terminos)
+        return self.articuloRepository.get_sugerencias(query_booleana)
 
 
 def get_articulo_service(db: Any = Depends(get_db)) -> ArticuloService:

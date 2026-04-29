@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Query, UploadFile, File
-from typing import Optional, Annotated
+from typing import List, Optional, Annotated
 from app.models.Usuario import Usuario
 from app.services.IArticuloService import IArticuloService
 from app.services.imp.ArticuloService import get_articulo_service
-from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema
+from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema, ArticuloSugerencia
 
 from app.core.security import verificar_rol
 
@@ -76,3 +76,14 @@ async def subir_foto_articulo(
             return {"error": "El archivo no es una imagen válida"}
     
     return await service.subir_foto(articulo_precio_id, file)
+
+@router.get("/sugerencias", response_model=List[ArticuloSugerencia])
+def get_sugerencias(
+    service: ArticuloServiceDep,
+    q: Annotated[str, Query(min_length=2, description="Texto a buscar en código o descripción")]
+):
+    """
+    Búsqueda rápida y 'fuzzy' para sugerencias en vivo (Lupita).
+    Retorna los 5 mejores resultados usando Full-Text Search + Stemming.
+    """
+    return service.get_sugerencias(query_usuario=q)

@@ -8,10 +8,13 @@ class Presupuesto(Base):
     __tablename__ = "presupuestos"
 
     id = Column(Integer, primary_key=True, index=True)
+    numero_presupuesto_cliente = Column(Integer, nullable=False)
+    numero_seguimiento = Column(Integer, unique=True, nullable=True)
     fecha_creacion = Column(DateTime, default=datetime.now)
     
     id_cliente = Column(Integer, ForeignKey("clientes.id"))
     estado = Column(SQLEnum(EstadoPresupuesto), default=EstadoPresupuesto.CREADO)
+    
 
     total = Column(Float, default=0.0)
 

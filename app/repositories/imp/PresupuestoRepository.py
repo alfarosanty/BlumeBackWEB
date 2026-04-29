@@ -1,5 +1,7 @@
-from typing import Any 
-from app.models import Articulo, Presupuesto, SubFamilia
+from typing import Any
+
+from sqlalchemy import func 
+from app.models import Articulo, Familia, Presupuesto, SubFamilia
 from app.models.ArticuloPresupuesto import ArticuloPresupuesto
 from app.repositories.IPresupuestoRepository import IPresupuestoRepository
 from sqlalchemy.orm import Session, joinedload
@@ -21,7 +23,7 @@ class PresupuestoRepository(IPresupuestoRepository):
             joinedload(ArticuloPresupuesto.articulo).options(
                 joinedload(Articulo.color),
                 joinedload(Articulo.medida),
-                joinedload(Articulo.subfamilia).joinedload(SubFamilia.familia),
+                joinedload(Articulo.subfamilia).joinedload(SubFamilia.familia).joinedload(Familia.sector),
                 joinedload(Articulo.articulo_precio)
             )
         )
@@ -55,13 +57,20 @@ class PresupuestoRepository(IPresupuestoRepository):
                     .first()
 
     def crear(self, presupuesto: Presupuesto):
+        max_nro = self.db.query(func.max(Presupuesto.numero_presupuesto_cliente))\
+            .filter(Presupuesto.id_cliente == presupuesto.id_cliente)\
+            .scalar()
+
+        if max_nro is not None:
+            presupuesto.numero_presupuesto_cliente = max_nro + 1
+        else:
+            presupuesto.numero_presupuesto_cliente = 1 # type: ignore
         
         self.db.add(presupuesto)
         
         try:
             self.db.commit()
-            
-            
+            self.db.refresh(presupuesto)
             return presupuesto
         except Exception as e:
             self.db.rollback()

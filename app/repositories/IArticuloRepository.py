@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, Mapping, Optional
-from app.schemas import ArticuloPrecioSchema, ArticuloSchema, PagedResponse
+from typing import Any, Dict, Iterable, List, Mapping, Optional
+from app.schemas import ArticuloPrecioSchema, ArticuloSchema, PagedResponse, ArticuloSugerencia
 
 class IArticuloRepository(ABC):
     
@@ -47,4 +47,8 @@ class IArticuloRepository(ABC):
         """
         Actualiza el campo url_foto para un artículo dado.
         """
+        pass
+
+    @abstractmethod
+    def get_sugerencias(self, query_booleana: str) -> List[ArticuloSugerencia]:
         pass
