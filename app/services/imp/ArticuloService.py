@@ -40,16 +40,20 @@ class ArticuloService(IArticuloService):
             id_articulo_precio=id_articulo_precio
         )
     
-    def get_precio_paginado(
-        self, 
-        skip: Optional[int], 
-        limit: Optional[int], 
-        filtro_codigo: Optional[str] = None,
-    ) -> PagedResponse[ArticuloPrecioSchema]:
+    def get_precio_paginado(self, skip: int, 
+                            limit: int, 
+                            filtro_codigo: Optional[str] = None, 
+                            sector_id: Optional[int] = None, 
+                            familia_id: Optional[int] = None, 
+                            subfamilia_id: Optional[int] = None
+                            ):
         return self.articuloRepository.get_precio_paginado(
-            skip=skip,
-            limit=limit,
+            skip=skip, 
+            limit=limit, 
             filtro_codigo=filtro_codigo,
+            sector_id=sector_id,
+            familia_id=familia_id,
+            subfamilia_id=subfamilia_id
         )
       
     def procesar_upsert_precios(self, file: UploadFile) -> int:

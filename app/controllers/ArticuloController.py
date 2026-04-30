@@ -37,12 +37,17 @@ def get_precio_paginado(
     service: ArticuloServiceDep,
     pagination: Annotated[PaginationParams, Depends()], 
     codigo: Optional[str] = Query(None),
+    sector_id: Optional[int] = Query(None),
+    familia_id: Optional[int] = Query(None),
+    subfamilia_id: Optional[int] = Query(None),
 ):
-    # Aquí pasamos los valores tal cual, podrían ser None
     return service.get_precio_paginado(
-        skip=pagination.skip, 
-        limit=pagination.size, 
+        skip=pagination.skip or 0, 
+        limit=pagination.size or 20, 
         filtro_codigo=codigo,
+        sector_id=sector_id,
+        familia_id=familia_id,
+        subfamilia_id=subfamilia_id
     )
 
 

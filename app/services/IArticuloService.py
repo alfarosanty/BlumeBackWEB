@@ -19,12 +19,13 @@ class IArticuloService(ABC):
         pass
 
     @abstractmethod
-    def get_precio_paginado(
-        self,
-        skip: Optional[int], 
-        limit: Optional[int],
-        filtro_codigo: Optional[str] = None,
-    ) -> PagedResponse[ArticuloPrecioSchema] :
+    def get_precio_paginado(self, skip: int, 
+                            limit: int, 
+                            filtro_codigo: Optional[str] = None, 
+                            sector_id: Optional[int] = None, 
+                            familia_id: Optional[int] = None, 
+                            subfamilia_id: Optional[int] = None
+                            ) -> PagedResponse[ArticuloPrecioSchema] :
         """Trae los artículos precios envueltos en la lógica de paginación"""
         pass
 

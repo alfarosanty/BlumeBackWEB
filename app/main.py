@@ -7,11 +7,14 @@ import cloudinary
 # --- PASO CRUCIAL: IMPORTAR TUS MODELOS ---
 # Sin estos imports, 'Base.metadata.create_all' no encontrará nada para crear.
 # Asegurate de que los nombres coincidan con tus archivos en la carpeta 'models'
-from app.models import Articulo, Usuario, Cliente, Presupuesto, CondicionFiscal, Familia, SubFamilia, Medida, Color, ArticuloPrecio, ArticuloPresupuesto, EstadoPresupuesto 
+from app.models import Articulo, Usuario, Cliente, Presupuesto, CondicionFiscal, Familia, SubFamilia, Medida, Color, ArticuloPrecio, ArticuloPresupuesto, EstadoPresupuesto, Sector
 from app.controllers.ArticuloController import router as articulos_router
 from app.controllers.UsuarioController import router as usuarios_router
 from app.controllers.AuthController import router as auth_router
 from app.controllers.PresupuestoController import router as presupuesto_router
+from app.controllers.FamiliaController import router as familias_router
+from app.controllers.SubFamiliaController import router as subfamilias_router
+from app.controllers.SectorController import router as sector_router
 
 # Esta línea busca las tablas en Intermedia. 
 # Si NO existen, las crea. Si YA existen, las deja intactas (no borra nada).
@@ -51,6 +54,10 @@ app.include_router(articulos_router)
 app.include_router(usuarios_router)
 app.include_router(auth_router)
 app.include_router(presupuesto_router)
+app.include_router(familias_router)
+app.include_router(subfamilias_router)
+app.include_router(sector_router)
+
 
 
 @app.get("/")
