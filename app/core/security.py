@@ -64,6 +64,16 @@ def obtener_usuario_actual(
         
     except JWTError:
         raise credentials_exception
+    
+async def obtener_usuario_confirmado(
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
+):
+    if not bool(usuario_actual.confirmado):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Su cuenta aún no ha sido confirmada por un administrador."
+        )
+    return usuario_actual
 
 def verificar_rol(roles_permitidos: list[str]):
     """

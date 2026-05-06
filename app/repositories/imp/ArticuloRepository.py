@@ -56,6 +56,7 @@ class ArticuloRepository(IArticuloRepository):
             skip=skip or 0, 
             limit=limit or 1
         )    
+    
     def get_precio_paginado(self, skip: int, 
                         limit: int,
                         filtro_codigo: Optional[str] = None, 
@@ -64,9 +65,6 @@ class ArticuloRepository(IArticuloRepository):
                         subfamilia_id: Optional[int] = None
                         )-> PagedResponse[ArticuloPrecioSchema]:
     
-        print(f"Sector: {sector_id} | Familia: {familia_id} | Subfamilia: {subfamilia_id} | Codigo: {filtro_codigo}")
-        print(f"Skip: {skip} | Limit: {limit}")
-
         subquery = (
             self.db.query(func.min(Articulo.id).label("min_id"))
             .group_by(Articulo.codigo)
@@ -74,30 +72,34 @@ class ArticuloRepository(IArticuloRepository):
         )
 
         query = self.db.query(ArticuloPrecio).join(Articulo)
-
         query = query.filter(Articulo.id.in_(subquery.select()))
 
+        if sector_id or familia_id or subfamilia_id:
+            query = query.join(Articulo.subfamilia)
+
         if sector_id:
-            query = query.outerjoin(Articulo.subfamilia).outerjoin(SubFamilia.familia)
+            query = query.join(SubFamilia.familia)
             query = query.filter(Familia.id_sector == sector_id)
 
         if familia_id:
-            if not sector_id:
-                query = query.outerjoin(Articulo.subfamilia)
             query = query.filter(SubFamilia.id_familia == familia_id)
-        total_real = query.count()
-        print(f"DEBUG: Total de productos encontrados: {total_real}")
 
+        if subfamilia_id:
+            query = query.filter(Articulo.id_subfamilia == subfamilia_id)
+
+        if filtro_codigo:
+            query = query.filter(Articulo.codigo.ilike(f"%{filtro_codigo}%"))
+
+        total_real = query.count()
         items = query.offset(skip).limit(limit).all()
-        print(f"DEBUG: Items retornados en esta página: {len(items)}")
         
         items_schema = [ArticuloPrecioSchema.model_validate(item) for item in items]
 
         return PagedResponse[ArticuloPrecioSchema].crear(
             items=items_schema, 
             total=total_real,
-            skip=skip or 0, 
-            limit=limit or 20
+            skip=skip, 
+            limit=limit
         )
 
     def sync_precios(self, mappings: Iterable[Mapping[str, Any]]) -> int:

@@ -16,10 +16,14 @@ class FamiliaService(IFamiliaService):
 
         return  [FamiliaSchema.model_validate(s) for s in familias_db]
     
-    def obtener_chips_navegacion(self, sector_id: int):
-        # Aquí podrías ordenar alfabéticamente o por algún criterio de prioridad
-        filtros = self.repo.get_filtros_por_sector(sector_id)
-        return sorted(filtros, key=lambda x: x.descripcion)
+    def obtener_chips_navegacion(self, sector_id: int) -> List[FamiliaSchema]:
+        familias_db = self.repo.get_familia_por_sector(sector_id)
+
+        familias_validadas = [
+            FamiliaSchema.model_validate(f) for f in familias_db
+        ]
+
+        return sorted(familias_validadas, key=lambda x: x.descripcion.lower())
     
     
 

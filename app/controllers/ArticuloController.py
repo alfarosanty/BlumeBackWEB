@@ -5,7 +5,7 @@ from app.services.IArticuloService import IArticuloService
 from app.services.imp.ArticuloService import get_articulo_service
 from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema, ArticuloSugerencia
 
-from app.core.security import verificar_rol
+from app.core.security import obtener_usuario_confirmado, verificar_rol
 
 router = APIRouter(prefix="/articulos", tags=["Articulos"])
 
@@ -19,7 +19,8 @@ def get_paginado(
     pagination: Annotated[PaginationParams, Depends()], 
     codigo: Optional[str] = Query(None),
     subfamilia_id: Optional[int] = Query(None),
-    articulo_precio_id: Optional[int] = Query(None)
+    articulo_precio_id: Optional[int] = Query(None),
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     """
     Obtener artículos de forma paginada.
@@ -40,6 +41,7 @@ def get_precio_paginado(
     sector_id: Optional[int] = Query(None),
     familia_id: Optional[int] = Query(None),
     subfamilia_id: Optional[int] = Query(None),
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     return service.get_precio_paginado(
         skip=pagination.skip or 0, 
@@ -85,7 +87,8 @@ async def subir_foto_articulo(
 @router.get("/sugerencias", response_model=List[ArticuloSugerencia])
 def get_sugerencias(
     service: ArticuloServiceDep,
-    q: Annotated[str, Query(min_length=2, description="Texto a buscar en código o descripción")]
+    q: Annotated[str, Query(min_length=2, description="Texto a buscar en código o descripción")],
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     """
     Búsqueda rápida y 'fuzzy' para sugerencias en vivo (Lupita).

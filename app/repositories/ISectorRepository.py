@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import List
 from app.models import Sector
+from sqlalchemy.orm import Session
 
 class ISectorRepository(ABC):
     @abstractmethod
-    def get_visible_sectores(self) -> List[Sector]:
-        """Debe retornar solo los sectores con MostrarEnWeb = True"""
-        pass
+    def get_visible_sectores(self) -> List[Sector]: pass
 
     @abstractmethod
-    def get_all(self) -> List[Sector]:
-        """Opcional: para el panel administrativo"""
-        pass
+    def get_by_id(self, sector_id: int) -> Sector: pass
+
+    @abstractmethod
+    def update(self, entity: Sector) -> Sector: pass

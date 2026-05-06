@@ -15,3 +15,10 @@ class SubFamiliaService(ISubFamiliaService):
 
 
         return  [SubFamiliaSchema.model_validate(s) for s in subfamilias_db]
+    
+    def obtener_chips_navegacion(self, sector_id: int) -> list[SubFamiliaSchema]:
+        filtros = self.repo.get_subfamilia_por_sector(sector_id)
+
+        filtros_schema = [SubFamiliaSchema.model_validate(f) for f in filtros]
+        
+        return sorted(filtros_schema, key=lambda x: x.descripcion or "")

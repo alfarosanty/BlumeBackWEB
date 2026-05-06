@@ -10,6 +10,7 @@ class Sector(Base):
     codigo = Column(String(50), unique=True, nullable=True)
     descripcion = Column(String(100), nullable=False)
     mostrar_en_web = Column(Boolean, default=False)
-
+    url_foto = Column(String(255), nullable=True)
+    
     # Relación: Un sector tiene muchas familias
     familias = relationship("Familia", back_populates="sector")

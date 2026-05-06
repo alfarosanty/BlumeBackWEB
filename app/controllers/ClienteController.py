@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Annotated, Optional
 
+from app.core.security import obtener_usuario_confirmado
 from app.models import Cliente
+from app.models.Usuario import Usuario
 from app.schemas.pagination import PagedResponse, PaginationParams
 from app.services.IClienteService import IClienteService
 from app.services.imp.ClienteService import get_cliente_service
@@ -16,6 +18,7 @@ def get_paginado(
     service: ClienteServiceDep,
     pagination: Annotated[PaginationParams, Depends()], 
     id: Optional[int] = Query(None),
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     """
     Obtener clientes de forma paginada.
@@ -36,7 +39,8 @@ def get_paginado(
 @router.put("/{cliente_id}", response_model=Cliente)
 def actualizar(
     service: ClienteServiceDep,
-    cliente: Cliente
+    cliente: Cliente,
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     """
     Actualizar un cliente existente por su ID.

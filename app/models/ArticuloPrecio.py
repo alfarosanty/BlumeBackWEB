@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric
+from sqlalchemy import Boolean, Column, Integer, String, Numeric
 from app.database import Base
 
 class ArticuloPrecio(Base):
@@ -11,3 +11,4 @@ class ArticuloPrecio(Base):
     precio2 = Column(Numeric(10, 2), default=0.0)
     precio3 = Column(Numeric(10, 2), default=0.0)
     url_foto = Column(String(500), nullable=True)
+    habilitado = Column(Boolean, default=True)

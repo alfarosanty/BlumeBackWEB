@@ -11,3 +11,4 @@ from .Usuario import Usuario
 from .ArticuloPresupuesto import ArticuloPresupuesto
 from .Presupuesto import Presupuesto
 from .Sector import Sector
+from .WebConfig import WebConfig

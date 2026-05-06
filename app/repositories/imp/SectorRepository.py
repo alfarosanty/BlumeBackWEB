@@ -10,8 +10,12 @@ class SectorRepository(ISectorRepository):
         self.db = db
 
     def get_visible_sectores(self):
-        """Trae de la base de datos solo los sectores marcados para la web."""
         return self.db.query(Sector).filter(Sector.mostrar_en_web == True).all()
-    
-    def get_all(self) -> List[Sector]:
-        return self.db.query(Sector).all()
+
+    def get_by_id(self, sector_id: int):
+        return self.db.query(Sector).filter(Sector.id == sector_id).first()
+
+    def update(self, entity: Sector):
+        self.db.commit()
+        self.db.refresh(entity)
+        return entity

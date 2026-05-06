@@ -10,5 +10,6 @@ class ArticuloPrecioSchema(BaseModel):
     precio2: Decimal
     precio3: Decimal
     url_foto: Optional[str] = None
+    habilitado: bool
 
     model_config = ConfigDict(from_attributes=True)

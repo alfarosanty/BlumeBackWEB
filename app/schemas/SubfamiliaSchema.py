@@ -7,7 +7,7 @@ from app.schemas.FamiliaSchema import FamiliaSchema
 class SubFamiliaSchema(BaseModel):
     id: int
     codigo: Optional[str] = None
-    descripcion: Optional[str] = None
+    descripcion: str
     id_familia: Optional[int] = None
     
     # Anidamos el objeto Familia completo

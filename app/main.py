@@ -15,6 +15,8 @@ from app.controllers.PresupuestoController import router as presupuesto_router
 from app.controllers.FamiliaController import router as familias_router
 from app.controllers.SubFamiliaController import router as subfamilias_router
 from app.controllers.SectorController import router as sector_router
+from app.controllers.WebConfigController import router as web_config_router
+
 
 # Esta línea busca las tablas en Intermedia. 
 # Si NO existen, las crea. Si YA existen, las deja intactas (no borra nada).
@@ -57,6 +59,7 @@ app.include_router(presupuesto_router)
 app.include_router(familias_router)
 app.include_router(subfamilias_router)
 app.include_router(sector_router)
+app.include_router(web_config_router)
 
 
 

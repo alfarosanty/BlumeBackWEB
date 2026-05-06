@@ -9,6 +9,7 @@ class UsuarioBase(BaseModel):
     rol: str
     id_cliente: Optional[int] = None
     is_active: bool = True
+    confirmado: bool
 
 class UsuarioResponse(UsuarioBase):
     id: int

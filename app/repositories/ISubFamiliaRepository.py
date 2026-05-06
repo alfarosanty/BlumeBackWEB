@@ -6,3 +6,6 @@ from app.schemas.FamiliaSchema import FiltroWebDTO
 class ISubFamiliaRepository(ABC):
     @abstractmethod
     def get_visible_subfamilias(self) -> List[SubFamilia]: pass
+
+    @abstractmethod
+    def get_subfamilia_por_sector(self, sector_id: int) -> List[SubFamilia]:pass

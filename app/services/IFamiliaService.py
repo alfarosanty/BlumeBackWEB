@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from app.schemas import FamiliaSchema, FiltroWebDTO
+from app.schemas import FamiliaSchema
 
 
 class IFamiliaService(ABC):
@@ -9,4 +9,4 @@ class IFamiliaService(ABC):
     def listar_para_web(self)-> List[FamiliaSchema]: pass
 
     @abstractmethod
-    def obtener_chips_navegacion(self, sector_id: int)-> List[FiltroWebDTO]: pass
+    def obtener_chips_navegacion(self, sector_id: int)-> List[FamiliaSchema]: pass

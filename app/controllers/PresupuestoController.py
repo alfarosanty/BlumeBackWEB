@@ -1,11 +1,9 @@
-from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from typing import Annotated, Optional
-from app.core.security import obtener_usuario_actual
-from app.models import Presupuesto
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+from app.core.security import obtener_usuario_confirmado
 from app.models.Usuario import Usuario
 from app.schemas.PresupuestoSchema import PresupuestoCreate, PresupuestoFiltros, PresupuestoResponse, PresupuestoUpdate
-from app.schemas.pagination import PagedResponse, PaginationParams
+from app.schemas.pagination import PagedResponse
 from app.services.IPresupuestoService import IPresupuestoService
 from app.services.imp.PresupuestoService import get_presupuesto_service
 
@@ -18,7 +16,7 @@ PresupuestoServiceDep = Annotated[IPresupuestoService, Depends(get_presupuesto_s
 def get_presupuestos(
     service: PresupuestoServiceDep,
     filtros: PresupuestoFiltros = Depends(),
-    auth: Usuario = Depends(obtener_usuario_actual)
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     return service.obtener_presupuestos_filtrados(filtros, auth)
 
@@ -26,7 +24,7 @@ def get_presupuestos(
 def crear_presupuesto(
     service: PresupuestoServiceDep,
     presupuesto: PresupuestoCreate,
-    auth: Usuario = Depends(obtener_usuario_actual)
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     if auth.rol == "client" and presupuesto.id_cliente != auth.id_cliente: # type: ignore
         raise HTTPException(status_code=403, detail="No podés crear presupuestos para otro cliente")
@@ -38,7 +36,7 @@ def actualizar_presupuesto(
     presupuesto_id: int,
     service: PresupuestoServiceDep,
     presupuesto_in: PresupuestoUpdate,
-    auth: Usuario = Depends(obtener_usuario_actual)
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     db_presupuesto = service.get_by_id(presupuesto_id)
     if not db_presupuesto:
@@ -53,7 +51,7 @@ def actualizar_presupuesto(
 def obtener_presupuesto(
     presupuesto_id: int,
     service: PresupuestoServiceDep,
-    auth: Usuario = Depends(obtener_usuario_actual)
+    auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     db_presupuesto = service.get_by_id(presupuesto_id)
     
