@@ -1,13 +1,12 @@
 from typing import Any, Iterable, List, Mapping, Optional
 from urllib.parse import unquote
 from fastapi import Query
-from sqlalchemy import func, text
+from sqlalchemy import desc, func, text
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app.models import ArticuloPrecio, Articulo, Familia, SubFamilia
 from app.repositories.IArticuloRepository import IArticuloRepository
 from app.schemas import ArticuloPrecioSchema, ArticuloSchema, PagedResponse, ArticuloSugerencia
-import time
 
 class ArticuloRepository(IArticuloRepository):
 
@@ -26,7 +25,6 @@ class ArticuloRepository(IArticuloRepository):
         id_articulo_precio: Optional[int] = None
     ) -> PagedResponse[ArticuloSchema]:
         
-        start_time = time.time()
         codigo_limpio = unquote(filtro_codigo) if filtro_codigo else None
         
         query = self.db.query(Articulo).options(
@@ -91,8 +89,8 @@ class ArticuloRepository(IArticuloRepository):
             query = query.filter(Articulo.codigo.ilike(f"%{filtro_codigo}%"))
 
         total_real = query.count()
-        items = query.offset(skip).limit(limit).all()
-        
+        items = query.order_by(Articulo.codigo).offset(skip).limit(limit).all()
+
         items_schema = [ArticuloPrecioSchema.model_validate(item) for item in items]
 
         return PagedResponse[ArticuloPrecioSchema].crear(

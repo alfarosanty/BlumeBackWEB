@@ -17,6 +17,11 @@ from app.controllers.SubFamiliaController import router as subfamilias_router
 from app.controllers.SectorController import router as sector_router
 from app.controllers.WebConfigController import router as web_config_router
 
+import logging
+
+logging.getLogger("weasyprint").setLevel(logging.ERROR)
+logging.getLogger("fontTools").setLevel(logging.ERROR)
+
 
 # Esta línea busca las tablas en Intermedia. 
 # Si NO existen, las crea. Si YA existen, las deja intactas (no borra nada).
