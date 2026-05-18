@@ -1,5 +1,5 @@
 # app/schemas/__init__.py
-from .ArticuloSchema import ArticuloSchema, ArticuloSugerencia
+from .ArticuloSchema import ArticuloSchema, ArticuloSugerencia, ArticuloMaestroResponse, VariantePrecioSchema
 from .ArticuloPrecioSchema import ArticuloPrecioSchema
 from .ColorSchema import ColorSchema
 from .FamiliaSchema import FamiliaSchema, FiltroWebDTO

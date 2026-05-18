@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import List, Optional
 from .ColorSchema import ColorSchema
 from .MedidaSchema import MedidaSchema
 from .SubfamiliaSchema import SubFamiliaSchema
@@ -31,6 +31,27 @@ class ArticuloSugerencia(BaseModel):
     descripcion: str
     url_foto: Optional[str] = None
     precio: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+class VariantePrecioSchema(BaseModel):
+    id: int
+    codigo: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio1: float = 0.0
+    habilitado: bool
+
+    class Config:
+        from_attributes = True
+
+class ArticuloMaestroResponse(BaseModel):
+    id: int
+    codigo: Optional[str] = None
+    descripcion: Optional[str] = None
+    url_foto: Optional[str] = None
+    activo: bool
+    variantes: List[VariantePrecioSchema] = []  # Relación m2m incluida
 
     class Config:
         from_attributes = True

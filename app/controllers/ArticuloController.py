@@ -1,17 +1,25 @@
-from fastapi import APIRouter, Depends, Query, UploadFile, File
-from typing import List, Optional, Annotated
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+from typing import List, Optional, Annotated, Dict
+from sqlalchemy.orm import Session
+
+from app.database import get_db  # Ajustá la ruta según dónde tengas tu get_db
 from app.models.Usuario import Usuario
 from app.services.IArticuloService import IArticuloService
 from app.services.imp.ArticuloService import get_articulo_service
-from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema, ArticuloSugerencia
 
+# Importamos tus nuevos servicios e interfaces
+from app.services.IArticuloMaestroService import IArticuloMaestroService
+from app.services.imp.ArticuloMaestroService import ArticuloMaestroService
+from app.services.IArticuloMaestroXArticuloPrecioService import IArticuloMaestroXArticuloPrecioService
+from app.services.imp.ArticuloMaestroXArticuloPrecioService import ArticuloMaestroXArticuloPrecioService
+
+from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema, ArticuloSugerencia, ArticuloMaestroResponse
 from app.core.security import obtener_usuario_confirmado, verificar_rol
 
 router = APIRouter(prefix="/articulos", tags=["Articulos"])
 
 # Alias para la inyección del servicio (reutilizable en todo el archivo)
 ArticuloServiceDep = Annotated[IArticuloService, Depends(get_articulo_service)]
-
 
 @router.get("", response_model=PagedResponse[ArticuloSchema])
 def get_paginado(
@@ -95,3 +103,53 @@ def get_sugerencias(
     Retorna los 5 mejores resultados usando Full-Text Search + Stemming.
     """
     return service.get_sugerencias(query_usuario=q)
+
+@router.post("/articulo-maestro/cargar", response_model=Dict)
+async def cargar_maestros(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(verificar_rol(["super_admin", "staff"]))
+):
+    try:
+        service: IArticuloMaestroService = ArticuloMaestroService(db)
+        cantidad = service.subir_maestros_desde_excel(file.file)
+        
+        return {
+            "mensaje": "Carga de maestros exitosa",
+            "registros_procesados": cantidad
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al procesar maestros: {str(e)}")
+
+@router.post("/articulo-maestro/vincular-precios", response_model=Dict)
+async def vincular_precios(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(verificar_rol(["super_admin", "staff"]))
+):
+    try:
+        service: IArticuloMaestroXArticuloPrecioService = ArticuloMaestroXArticuloPrecioService(db)
+        cantidad = service.vincular_articulos_por_ids(file.file)
+        
+        return {
+            "mensaje": "Vinculación de precios completada",
+            "relaciones_creadas": cantidad
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en la vinculación: {str(e)}")
+    
+
+
+@router.get("/articulo-maestro", response_model=List[ArticuloMaestroResponse])
+async def get_todos_los_maestros(
+    solo_activos: bool = Query(True, description="Si es True, trae solo los maestros activos. Si es False, trae todos."),
+    db: Session = Depends(get_db),
+    auth: Usuario = Depends(obtener_usuario_confirmado)
+):
+    """
+    Obtiene los artículos maestro de la base de datos con filtro opcional por estado activo.
+    """
+    service: IArticuloMaestroService = ArticuloMaestroService(db)
+    
+    return service.obtener_todos(solo_activos=solo_activos)
+

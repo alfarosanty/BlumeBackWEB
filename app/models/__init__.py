@@ -12,3 +12,5 @@ from .ArticuloPresupuesto import ArticuloPresupuesto
 from .Presupuesto import Presupuesto
 from .Sector import Sector
 from .WebConfig import WebConfig
+from .ArticuloMaestro import ArticuloMaestro
+from .ArticuloMaestroXArticuloPrecio import ArticuloMaestroXArticuloPrecio
