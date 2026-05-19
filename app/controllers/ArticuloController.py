@@ -7,12 +7,6 @@ from app.models.Usuario import Usuario
 from app.services.IArticuloService import IArticuloService
 from app.services.imp.ArticuloService import get_articulo_service
 
-# Importamos tus nuevos servicios e interfaces
-from app.services.IArticuloMaestroService import IArticuloMaestroService
-from app.services.imp.ArticuloMaestroService import ArticuloMaestroService
-from app.services.IArticuloMaestroXArticuloPrecioService import IArticuloMaestroXArticuloPrecioService
-from app.services.imp.ArticuloMaestroXArticuloPrecioService import ArticuloMaestroXArticuloPrecioService
-
 from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema, ArticuloSugerencia, ArticuloMaestroResponse
 from app.core.security import obtener_usuario_confirmado, verificar_rol
 
@@ -48,7 +42,8 @@ def get_precio_paginado(
     codigo: Optional[str] = Query(None),
     sector_id: Optional[int] = Query(None),
     familia_id: Optional[int] = Query(None),
-    subfamilia_id: Optional[int] = Query(None),
+    subfamilia_id: Optional[int] = Query(None), # Filtro por subfamilia del ArticuloPrecio
+    codigo_maestro: Optional[str] = Query(None, description="Filtra por código del ArticuloMaestro asociado"),
     auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     return service.get_precio_paginado(
@@ -57,7 +52,8 @@ def get_precio_paginado(
         filtro_codigo=codigo,
         sector_id=sector_id,
         familia_id=familia_id,
-        subfamilia_id=subfamilia_id
+        subfamilia_id=subfamilia_id,
+        filtro_codigo_maestro=codigo_maestro
     )
 
 
@@ -106,12 +102,11 @@ def get_sugerencias(
 
 @router.post("/articulo-maestro/cargar", response_model=Dict)
 async def cargar_maestros(
+    service: ArticuloServiceDep,
     file: UploadFile = File(...), 
-    db: Session = Depends(get_db),
     usuario: Usuario = Depends(verificar_rol(["super_admin", "staff"]))
 ):
     try:
-        service: IArticuloMaestroService = ArticuloMaestroService(db)
         cantidad = service.subir_maestros_desde_excel(file.file)
         
         return {
@@ -121,15 +116,14 @@ async def cargar_maestros(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al procesar maestros: {str(e)}")
 
-@router.post("/articulo-maestro/vincular-precios", response_model=Dict)
+@router.post("/maestro/vincular-precios", response_model=Dict)
 async def vincular_precios(
+    service: ArticuloServiceDep,
     file: UploadFile = File(...), 
-    db: Session = Depends(get_db),
     usuario: Usuario = Depends(verificar_rol(["super_admin", "staff"]))
 ):
     try:
-        service: IArticuloMaestroXArticuloPrecioService = ArticuloMaestroXArticuloPrecioService(db)
-        cantidad = service.vincular_articulos_por_ids(file.file)
+        cantidad = service.vincular_maestros_precios_excel(file.file)
         
         return {
             "mensaje": "Vinculación de precios completada",
@@ -140,16 +134,26 @@ async def vincular_precios(
     
 
 
-@router.get("/articulo-maestro", response_model=List[ArticuloMaestroResponse])
+@router.get("/maestro", response_model=PagedResponse[ArticuloMaestroResponse])
 async def get_todos_los_maestros(
+    service: ArticuloServiceDep,
+    pagination: Annotated[PaginationParams, Depends()],
     solo_activos: bool = Query(True, description="Si es True, trae solo los maestros activos. Si es False, trae todos."),
-    db: Session = Depends(get_db),
+    codigo: Optional[str] = Query(None, description="Filtra por código del ArticuloMaestro"),
+    subfamilia_id: Optional[int] = Query(None, description="Filtra maestros que tengan al menos un artículo de esta subfamilia"),
+    familia_id: Optional[int] = Query(None, description="Filtra maestros que tengan al menos un artículo de esta familia"),
+    sector_id: Optional[int] = Query(None, description="Filtra maestros que tengan al menos un artículo de este sector"),
     auth: Usuario = Depends(obtener_usuario_confirmado)
 ):
     """
-    Obtiene los artículos maestro de la base de datos con filtro opcional por estado activo.
+    Obtiene los artículos maestro de la base de datos con filtro opcional por estado activo y paginación.
     """
-    service: IArticuloMaestroService = ArticuloMaestroService(db)
-    
-    return service.obtener_todos(solo_activos=solo_activos)
-
+    return service.obtener_maestros_paginado(
+        solo_activos=solo_activos,
+        skip=pagination.skip or 0,
+        limit=pagination.size or 20,
+        filtro_codigo=codigo,
+        id_subfamilia=subfamilia_id,
+        id_familia=familia_id,
+        id_sector=sector_id
+    )

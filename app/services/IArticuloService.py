@@ -23,8 +23,9 @@ class IArticuloService(ABC):
                             limit: int, 
                             filtro_codigo: Optional[str] = None, 
                             sector_id: Optional[int] = None, 
-                            familia_id: Optional[int] = None, 
-                            subfamilia_id: Optional[int] = None
+                            familia_id: Optional[int] = None,
+                            subfamilia_id: Optional[int] = None,
+                            filtro_codigo_maestro: Optional[str] = None
                             ) -> PagedResponse[ArticuloPrecioSchema] :
         """Trae los artículos precios envueltos en la lógica de paginación"""
         pass
@@ -43,6 +44,28 @@ class IArticuloService(ABC):
         Procesa un archivo Excel para actualizar los datos de los artículos.
         Retorna un diccionario con el resultado del proceso.
         """
+        pass
+
+    # --- LÓGICA DE ARTÍCULO MAESTRO ---
+
+    @abstractmethod
+    def obtener_maestros_paginado(self, solo_activos: bool, skip: Optional[int], limit: Optional[int],
+                                 filtro_codigo: Optional[str] = None,
+                                 id_subfamilia: Optional[int] = None,
+                                 id_familia: Optional[int] = None,
+                                 id_sector: Optional[int] = None
+                                 ) -> PagedResponse:
+        """Obtiene los maestros de forma paginada"""
+        pass
+
+    @abstractmethod
+    def subir_maestros_desde_excel(self, file) -> int:
+        """Procesa la carga masiva de maestros"""
+        pass
+
+    @abstractmethod
+    def vincular_maestros_precios_excel(self, file) -> int:
+        """Vincula maestros con artículos de precio mediante un Excel"""
         pass
 
     @abstractmethod

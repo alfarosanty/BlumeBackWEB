@@ -41,6 +41,7 @@ class VariantePrecioSchema(BaseModel):
     descripcion: Optional[str] = None
     precio1: float = 0.0
     habilitado: bool
+    subfamilia: SubFamiliaSchema
 
     class Config:
         from_attributes = True
@@ -51,7 +52,7 @@ class ArticuloMaestroResponse(BaseModel):
     descripcion: Optional[str] = None
     url_foto: Optional[str] = None
     activo: bool
-    variantes: List[VariantePrecioSchema] = []  # Relación m2m incluida
+    variantes: List[VariantePrecioSchema] = []
 
     class Config:
         from_attributes = True

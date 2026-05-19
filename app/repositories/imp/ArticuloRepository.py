@@ -1,12 +1,13 @@
-from typing import Any, Iterable, List, Mapping, Optional
+from typing import Any, Iterable, List, Mapping, Optional, Dict
 from urllib.parse import unquote
-from fastapi import Query
-from sqlalchemy import desc, func, text
+from sqlalchemy import func, text, select
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy.orm import Session, joinedload, selectinload
-from app.models import ArticuloPrecio, Articulo, Familia, SubFamilia
+from sqlalchemy.orm import Session, joinedload
+from app.models import ArticuloPrecio, Articulo, Familia, SubFamilia, ArticuloMaestro
+from app.models.ArticuloMaestroXArticuloPrecio import ArticuloMaestroXArticuloPrecio
 from app.repositories.IArticuloRepository import IArticuloRepository
 from app.schemas import ArticuloPrecioSchema, ArticuloSchema, PagedResponse, ArticuloSugerencia
+from sqlalchemy.orm import joinedload, contains_eager
 
 class ArticuloRepository(IArticuloRepository):
 
@@ -60,7 +61,8 @@ class ArticuloRepository(IArticuloRepository):
                         filtro_codigo: Optional[str] = None, 
                         sector_id: Optional[int] = None, 
                         familia_id: Optional[int] = None, 
-                        subfamilia_id: Optional[int] = None
+                        subfamilia_id: Optional[int] = None,
+                        filtro_codigo_maestro: Optional[str] = None
                         )-> PagedResponse[ArticuloPrecioSchema]:
     
         subquery = (
@@ -70,6 +72,7 @@ class ArticuloRepository(IArticuloRepository):
         )
 
         query = self.db.query(ArticuloPrecio).join(Articulo)
+        query = query.options(joinedload(ArticuloPrecio.articulo).joinedload(Articulo.articulo_maestro))
         query = query.filter(Articulo.id.in_(subquery.select()))
 
         if sector_id or familia_id or subfamilia_id:
@@ -84,6 +87,9 @@ class ArticuloRepository(IArticuloRepository):
 
         if subfamilia_id:
             query = query.filter(Articulo.id_subfamilia == subfamilia_id)
+        
+        if filtro_codigo_maestro:
+            query = query.filter(Articulo.articulo_maestro.has(ArticuloMaestro.codigo.ilike(f"%{filtro_codigo_maestro}%")))
 
         if filtro_codigo:
             query = query.filter(Articulo.codigo.ilike(f"%{filtro_codigo}%"))
@@ -99,6 +105,118 @@ class ArticuloRepository(IArticuloRepository):
             skip=skip, 
             limit=limit
         )
+
+    # --- LÓGICA DE ARTÍCULO MAESTRO ---
+
+    def bulk_insert_maestros(self, lista_maestros: list[dict]):
+        if not lista_maestros:
+            return
+
+        from sqlalchemy import insert as sa_insert
+        maestros_unicos_excel = {m['codigo']: m for m in lista_maestros}.values()
+        codigos_nuevos = {m['codigo'] for m in maestros_unicos_excel}
+        
+        query_existentes = select(ArticuloMaestro.codigo).where(ArticuloMaestro.codigo.in_(codigos_nuevos))
+        existentes = set(self.db.execute(query_existentes).scalars().all())
+
+        maestros_a_insertar = [
+            m for m in maestros_unicos_excel if m['codigo'] not in existentes
+        ]
+
+        if maestros_a_insertar:
+            self.db.execute(sa_insert(ArticuloMaestro), maestros_a_insertar)
+            self.db.commit()
+
+
+
+    def get_all_maestros(
+        self, 
+        solo_activos: bool, 
+        skip: int = 0, 
+        limit: int = 20,
+        filtro_codigo: Optional[str] = None,
+        id_subfamilia: Optional[int] = None,
+        id_familia: Optional[int] = None,
+        id_sector: Optional[int] = None
+    ) -> tuple[int, list[ArticuloMaestro]]:
+
+
+        where_conditions = []
+        join_intermedia_required = False
+
+        if solo_activos:
+            where_conditions.append(ArticuloMaestro.activo == True)
+
+        if filtro_codigo:
+            where_conditions.append(ArticuloMaestro.codigo.ilike(f"%{filtro_codigo}%"))
+
+        intermedia_conditions = []
+        
+        if id_subfamilia:
+            join_intermedia_required = True
+            intermedia_conditions.append(ArticuloMaestroXArticuloPrecio.subfamilia_id == id_subfamilia)
+            
+        if id_familia:
+            join_intermedia_required = True
+            intermedia_conditions.append(
+                ArticuloMaestroXArticuloPrecio.subfamilia.has(SubFamilia.id_familia == id_familia)
+            )
+            
+        if id_sector:
+            join_intermedia_required = True
+            intermedia_conditions.append(
+                ArticuloMaestroXArticuloPrecio.subfamilia.has(
+                    SubFamilia.familia.has(Familia.id_sector == id_sector)
+                )
+            )
+
+
+        count_stmt = select(func.count(func.distinct(ArticuloMaestro.id)))
+        
+        if join_intermedia_required:
+            count_stmt = count_stmt.join(ArticuloMaestro.variantes) # Asumiendo que 'variantes' apunta a la intermedia
+            if intermedia_conditions:
+                count_stmt = count_stmt.where(*intermedia_conditions)
+                
+        if where_conditions:
+            count_stmt = count_stmt.where(*where_conditions)
+            
+        total = self.db.execute(count_stmt).scalar() or 0
+
+        stmt = select(ArticuloMaestro)
+
+        if join_intermedia_required:
+            stmt = stmt.join(ArticuloMaestro.variantes)
+            if intermedia_conditions:
+                stmt = stmt.where(*intermedia_conditions)
+            
+            stmt = stmt.options(contains_eager(ArticuloMaestro.variantes))
+        else:
+            stmt = stmt.options(joinedload(ArticuloMaestro.variantes))
+
+        if where_conditions:
+            stmt = stmt.where(*where_conditions)
+
+        stmt = stmt.offset(skip).limit(limit)
+
+        result = self.db.execute(stmt)
+        
+        return total, list(result.scalars().unique().all())
+
+    def vincular_maestros_a_articulos(self, mapeo_codigos: List[Dict[str, str]]) -> int:
+        count = 0
+        for item in mapeo_codigos:
+            codigo_maestro = item.get('codigo_maestro')
+            codigo_articulo = item.get('codigo_articulo')
+
+            maestro = self.db.query(ArticuloMaestro).filter(ArticuloMaestro.codigo == codigo_maestro).first()
+            if maestro:
+                res = self.db.query(Articulo).filter(Articulo.codigo == codigo_articulo).update(
+                    {Articulo.id_articulo_maestro: maestro.id}, synchronize_session=False
+                )
+                count += res
+        self.db.commit()
+        return count
 
     def sync_precios(self, mappings: Iterable[Mapping[str, Any]]) -> int:
         try:
@@ -197,16 +315,23 @@ class ArticuloRepository(IArticuloRepository):
         
 
     def get_sugerencias(self, query_booleana: str) -> List[ArticuloSugerencia]:
+        # Modificamos la consulta para incluir ArticuloMaestro en la búsqueda
         sql = text("""
-            SELECT ap.id, ap.codigo, ap.descripcion, ap.url_foto, ap.precio1 as precio
-            FROM articulos_precio ap
-            WHERE MATCH(ap.codigo, ap.descripcion) AGAINST(:q IN BOOLEAN MODE)
-            ORDER BY MATCH(ap.codigo, ap.descripcion) AGAINST(:q IN BOOLEAN MODE) DESC
+            SELECT 
+                am.id, 
+                am.codigo, 
+                am.descripcion, 
+                am.url_foto, 
+            FROM ArticuloMaestro am
+            WHERE MATCH(am.codigo, am.descripcion) AGAINST(:q IN BOOLEAN MODE)
+            GROUP BY am.id -- Agrupamos por am.id para evitar duplicados si un maestro tiene varias variantes con el mismo precio
+            ORDER BY MATCH(am.codigo, am.descripcion) AGAINST(:q IN BOOLEAN MODE) DESC
             LIMIT 5
         """)
         
         result = self.db.execute(sql, {"q": query_booleana})
         
-        # El mapeo es una sola línea, sin objetos anidados
+        # Mapeamos los resultados al esquema ArticuloSugerencia
+        # Asegúrate de que tu tabla 'articulos_precio' y 'articulos_maestro' tengan índices FULLTEXT en 'codigo' y 'descripcion'
         return [ArticuloSugerencia(**row._asdict()) for row in result]
     

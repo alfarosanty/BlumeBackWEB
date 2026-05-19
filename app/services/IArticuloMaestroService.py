@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
+
 
 from app.models import ArticuloMaestro
 
@@ -9,5 +10,5 @@ class IArticuloMaestroService(ABC):
         pass
 
     @abstractmethod
-    def obtener_todos(self, solo_activos: bool) -> list[ArticuloMaestro]:
+    def obtener_todos(self, solo_activos: bool, skip: Optional[int] = 0, limit: Optional[int] = 20) -> list[ArticuloMaestro]:
         pass
