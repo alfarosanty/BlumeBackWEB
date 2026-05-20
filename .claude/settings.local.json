@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_get_articulos_maestro.py -v)",
+      "Bash(venv/Scripts/pip3.exe install *)",
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_get_articulos_maestro.py::test_get_maestros_autenticado_retorna_200_con_wrapper -v --tb=short)",
+      "PowerShell(cd C:\\\\Fran\\\\BlumeWEB\\\\Backend; powershell -NoProfile -ExecutionPolicy Bypass -File init.ps1)",
+      "Bash(powershell -File .\\\\init.ps1)",
+      "Bash(New-Item -ItemType Directory -Path \"C:\\\\Fran\\\\BlumeWEB\\\\Backend\\\\specs\\\\correccion_get_articulos_maestro\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"OK\")",
+      "Bash(py -m pytest tests/test_correccion_get_articulos_maestro.py -v)",
+      "Bash(where python *)",
+      "Bash(venv\\\\Scripts\\\\python.exe -m pytest tests/test_correccion_get_articulos_maestro.py -v)",
+      "Bash(powershell *)",
+      "Bash(not exist *)"
+    ]
+  }
+}

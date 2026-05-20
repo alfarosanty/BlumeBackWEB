@@ -2,18 +2,22 @@ from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
 from typing import List, Optional, Annotated, Dict
 from sqlalchemy.orm import Session
 
-from app.database import get_db  # Ajustá la ruta según dónde tengas tu get_db
+from app.database import get_db
 from app.models.Usuario import Usuario
 from app.services.IArticuloService import IArticuloService
 from app.services.imp.ArticuloService import get_articulo_service
+from app.services.IArticuloMaestroService import IArticuloMaestroService
+from app.services.imp.ArticuloMaestroService import get_articulo_maestro_service
 
-from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema, ArticuloSugerencia, ArticuloMaestroResponse
+from app.schemas import PagedResponse, PaginationParams, ArticuloSchema, ArticuloPrecioSchema, ArticuloSugerencia
+from app.schemas.ApiResponseSchema import ApiResponse, PagedResult
+from app.schemas.ArticuloMaestroSchema import ArticuloMaestroDto
 from app.core.security import obtener_usuario_confirmado, verificar_rol
 
 router = APIRouter(prefix="/articulos", tags=["Articulos"])
 
-# Alias para la inyección del servicio (reutilizable en todo el archivo)
 ArticuloServiceDep = Annotated[IArticuloService, Depends(get_articulo_service)]
+ArticuloMaestroServiceDep = Annotated[IArticuloMaestroService, Depends(get_articulo_maestro_service)]
 
 @router.get("", response_model=PagedResponse[ArticuloSchema])
 def get_paginado(
@@ -134,26 +138,28 @@ async def vincular_precios(
     
 
 
-@router.get("/maestro", response_model=PagedResponse[ArticuloMaestroResponse])
-async def get_todos_los_maestros(
-    service: ArticuloServiceDep,
-    pagination: Annotated[PaginationParams, Depends()],
-    solo_activos: bool = Query(True, description="Si es True, trae solo los maestros activos. Si es False, trae todos."),
-    codigo: Optional[str] = Query(None, description="Filtra por código del ArticuloMaestro"),
-    subfamilia_id: Optional[int] = Query(None, description="Filtra maestros que tengan al menos un artículo de esta subfamilia"),
-    familia_id: Optional[int] = Query(None, description="Filtra maestros que tengan al menos un artículo de esta familia"),
-    sector_id: Optional[int] = Query(None, description="Filtra maestros que tengan al menos un artículo de este sector"),
-    auth: Usuario = Depends(obtener_usuario_confirmado)
+@router.get("/maestro", response_model=ApiResponse[PagedResult[ArticuloMaestroDto]])
+async def get_maestros_paginado(
+    service: ArticuloMaestroServiceDep,
+    auth: Usuario = Depends(obtener_usuario_confirmado),
+    pageNumber: int = Query(default=1, ge=1, description="Número de página (desde 1)"),
+    pageSize: int = Query(default=20, ge=1, le=100, description="Registros por página (máx 100)"),
+    activo: Optional[bool] = Query(default=None, description="True → solo activos; omitido o False → todos"),
+    codigo: Optional[str] = Query(default=None, description="Filtra por código (contiene, case-insensitive)"),
+    sectorId: Optional[int] = Query(default=None, description="Filtra por Sector"),
+    familiaId: Optional[int] = Query(default=None, description="Filtra por Familia"),
+    subfamiliaId: Optional[int] = Query(default=None, description="Filtra por SubFamilia"),
 ):
-    """
-    Obtiene los artículos maestro de la base de datos con filtro opcional por estado activo y paginación.
-    """
-    return service.obtener_maestros_paginado(
-        solo_activos=solo_activos,
-        skip=pagination.skip or 0,
-        limit=pagination.size or 20,
-        filtro_codigo=codigo,
-        id_subfamilia=subfamilia_id,
-        id_familia=familia_id,
-        id_sector=sector_id
+    """Retorna artículos maestro paginados con su jerarquía de categorías y variantes de precio."""
+    total, items = service.obtener_paginado(
+        solo_activos=activo,
+        codigo=codigo,
+        sector_id=sectorId,
+        familia_id=familiaId,
+        subfamilia_id=subfamiliaId,
+        page_number=pageNumber,
+        page_size=pageSize,
+    )
+    return ApiResponse.ok(
+        PagedResult.crear(items=items, total=total, page_number=pageNumber, page_size=pageSize)
     )

@@ -1,0 +1,93 @@
+{
+  "project": "BlumeWEB Backend",
+  "description": "API FastAPI para ecommerce textil Blume: catálogo de productos del ERP, presupuestos y gestión de clientes. Sin stock.",
+  "rules": {
+    "one_feature_at_a_time": true,
+    "require_tests_to_close": true,
+    "require_approved_spec_to_implement": true,
+    "valid_status": ["pending", "spec_ready", "in_progress", "done", "blocked"],
+    "sdd_required_when": "feature has \"sdd\": true"
+  },
+  "features": [
+    {
+      "id": 1,
+      "name": "get_articulos_maestro",
+      "title": "GET paginado de Artículos Maestro con filtros",
+      "description": "Endpoint que retorna una lista paginada de ArticuloMaestro. Cada item incluye sus ArticulosPrecios asociados, la Subfamilia (con Familia y Sector) y la Medida tomada del primer Artículo del primer AP. Solo accesible para usuarios autenticados con campo 'confirmado' en true. La respuesta usa el wrapper ApiResponse<PagedResult<T>>.",
+      "acceptance": [
+        "GET /articulos/maestro requiere JWT válido, sin token → 401 (reemplaza el endpoint roto existente)",
+        "Si el usuario tiene 'confirmado' = false → 403",
+        "CUANDO activo=true ENTONCES retorna solo artículos con Activo=true; si se omite o es false retorna todos",
+        "Soporta filtros opcionales acumulables (AND): codigo (contiene), sectorId, familiaId, subfamiliaId",
+        "La respuesta es paginada con pageNumber (default 1) y pageSize (default 20, máx 100) en query params",
+        "Cada ArticuloMaestro en la respuesta incluye: datos base, Subfamilia→Familia→Sector, lista de ArticulosPrecios con su Medida (del primer Articulo del AP)",
+        "pageNumber <= 0 o pageSize <= 0 → 400 con errores descriptivos",
+        "La respuesta sigue el wrapper ApiResponse<PagedResult<ArticuloMaestroDto>>"
+      ],
+      "sdd": true,
+      "status": "done"
+    },
+    {
+      "id": 2,
+      "name": "correccion_get_articulos_maestro",
+      "title": "Corrección del endpoint GET de artículos maestro",
+      "description": "Corrige el endpoint GET /articulos/maestro para que funcione correctamente con los filtros y la paginación.",
+      "acceptance": [
+        "Soporta filtros opcionales acumulables (AND): codigo (contiene). Hoy nu funcionan bien, tienen que traer los artículosPrecio que tengan en su tabla intermedia, los cala(almohadones) por ejemplo me trae tambien los AP de los cala/fu(fundas)",
+        "El filtro sectorId, familiaId, subfamiliaId da error cuando se usa, debe corregirse para que filtre correctamente por la relación entre ArticuloMaestro→Subfamilia→Familia→Sector. cuando se pida sectorId=1 deben traerse los ArticulosMaestro cuyas entidades intermedias posean o pertenezcan a ese sector. Idem con familia y subfamilia"
+      ],
+      "sdd": true,
+      "status": "done"
+    },
+    {
+      "id": 3,
+      "name": "notificacion_email_presupuesto",
+      "title": "Notificación por email al cambiar estado del presupuesto",
+      "description": "Cuando un admin/staff actualiza el estado de un presupuesto a 'aprobado' o 'rechazado', se envía automáticamente un email al cliente notificándole. Usa el EmailService existente. El envío es no-bloqueante: si falla, la actualización de estado igual se persiste.",
+      "acceptance": [
+        "CUANDO el estado del presupuesto cambia a 'aprobado', el sistema DEBE enviar email al cliente con el asunto 'Tu presupuesto fue aprobado'",
+        "CUANDO el estado cambia a 'rechazado', el sistema DEBE enviar email con el asunto 'Tu presupuesto requiere revisión'",
+        "El email incluye: número de presupuesto, fecha, resumen de artículos y monto total",
+        "SI el envío de email falla ENTONCES el sistema DEBE persistir el cambio de estado igual y registrar el error en log",
+        "El endpoint de actualización de estado retorna HTTP 200 incluso si el email falló",
+        "Solo se envía email para los estados 'aprobado' y 'rechazado', no para otros cambios de estado"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 3,
+      "name": "notificacion_email_presupuesto",
+      "title": "Notificación por email al cambiar estado del presupuesto",
+      "description": "Cuando un admin/staff actualiza el estado de un presupuesto a 'aprobado' o 'rechazado', se envía automáticamente un email al cliente notificándole. Usa el EmailService existente. El envío es no-bloqueante: si falla, la actualización de estado igual se persiste.",
+      "acceptance": [
+        "CUANDO el estado del presupuesto cambia a 'aprobado', el sistema DEBE enviar email al cliente con el asunto 'Tu presupuesto fue aprobado'",
+        "CUANDO el estado cambia a 'rechazado', el sistema DEBE enviar email con el asunto 'Tu presupuesto requiere revisión'",
+        "El email incluye: número de presupuesto, fecha, resumen de artículos y monto total",
+        "SI el envío de email falla ENTONCES el sistema DEBE persistir el cambio de estado igual y registrar el error en log",
+        "El endpoint de actualización de estado retorna HTTP 200 incluso si el email falló",
+        "Solo se envía email para los estados 'aprobado' y 'rechazado', no para otros cambios de estado"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 4,
+      "name": "historial_presupuestos_cliente",
+      "title": "Historial de presupuestos del cliente autenticado",
+      "description": "Endpoint para que un cliente vea únicamente SUS presupuestos (no los de otros clientes). El filtrado por cliente_id se hace automáticamente desde el token JWT, no se acepta como parámetro externo. Soporta paginación y filtro por estado.",
+      "acceptance": [
+        "GET /mis-presupuestos retorna lista paginada de presupuestos del cliente autenticado",
+        "Requiere autenticación (cualquier usuario confirmado)",
+        "Un cliente solo ve sus propios presupuestos (el cliente_id se extrae del token JWT)",
+        "Soporta filtro opcional por estado (pending, aprobado, rechazado, etc.)",
+        "Soporta paginación con PagedResponse",
+        "Retorna HTTP 401 sin token",
+        "Cada item del listado incluye: id, fecha, estado, total, cantidad de artículos",
+        "Un staff/admin que usa este endpoint ve SOLO los presupuestos asociados a su propio perfil de cliente (si tiene uno), no todos los presupuestos del sistema"
+      ],
+      "sdd": true,
+      "status": "pending"
+    }
+  ]
+}

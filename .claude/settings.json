@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File init.ps1",
+            "description": "Antes de cerrar la sesión, fuerza la verificación completa."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File init.ps1)",
+      "PowerShell(.\\init.ps1)",
+      "Bash(python -m pytest*)",
+      "Bash(python*)"
+    ]
+  }
+}
